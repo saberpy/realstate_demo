@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- Tree View -->
+    <!-- ========================================================= -->
+
+    <record id="developer_eoi_tree_view" model="ir.ui.view">
+        <field name="name">developer.eoi.tree</field>
+        <field name="model">developer.eoi</field>
+        <field name="arch" type="xml">
+            <list string="Expression of Interest" default_order="create_date desc">
+                <field name="name" />
+                <field name="customer_id" />
+                <field name="project_id" />
+                <field name="unit_id" />
+                <field name="eoi_amount" widget="monetary" />
+                <field name="payment_status" />
+                <field name="expiry_date" />
+                <field name="state" widget="badge" />
+            </list>
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Form View -->
+    <!-- ========================================================= -->
+
+    <record id="developer_eoi_form_view" model="ir.ui.view">
+        <field name="name">developer.eoi.form</field>
+        <field name="model">developer.eoi</field>
+        <field name="arch" type="xml">
+            <form string="Expression of Interest">
+                <header>
+                    <!-- Flow Buttons -->
+                    <button name="action_submit"
+                        type="object"
+                        string="Submit"
+                        class="btn-primary"
+                        invisible="state != 'draft'" />
+
+                    <button name="action_upload_payment_proof"
+                        type="object"
+                        string="Submit Payment Proof"
+                        class="btn-primary"
+                        invisible="state != 'submitted'" />
+
+                    <button name="action_finance_approve"
+                        type="object"
+                        string="Finance Approve"
+                        class="btn-primary"
+                        invisible="state != 'finance_review'" />
+
+                    <button name="action_confirm"
+                        type="object"
+                        string="Confirm"
+                        class="btn-primary"
+                        invisible="state != 'manager_review'" />
+
+                    <button name="action_convert_to_rf"
+                        type="object"
+                        string="Create Reservation Form"
+                        class="btn-success"
+                        invisible="state != 'confirmed'" />
+
+                    <!-- Cancellation & Refund Buttons -->
+                    <button name="action_reject"
+                        type="object"
+                        string="Reject"
+                        class="btn-danger"
+                        invisible="state not in ['submitted', 'finance_review', 'manager_review']" />
+
+                    <button name="action_cancel"
+                        type="object"
+                        string="Cancel"
+                        class="btn-secondary"
+                        invisible="state not in ['draft', 'submitted', 'finance_review', 'manager_review', 'confirmed']" />
+
+                    <button name="action_refund_pending"
+                        type="object"
+                        string="Refund Pending"
+                        class="btn-warning"
+                        invisible="state not in ['cancelled', 'rejected']" />
+
+                    <button name="action_refunded"
+                        type="object"
+                        string="Refunded"
+                        class="btn-secondary"
+                        invisible="state != 'refund_pending'" />
+
+                    <button name="action_set_to_draft"
+                        type="object"
+                        string="Reset to Draft"
+                        class="btn-secondary"
+                        invisible="state not in ['submitted', 'finance_review', 'manager_review', 'rejected', 'cancelled', 'expired']" />
+
+                    <!-- Statusbar -->
+                    <field name="state"
+                        widget="statusbar"
+                        statusbar_visible="draft,submitted,finance_review,manager_review,confirmed,converted_to_rf" />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1" />
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Customer Information">
+                            <field name="customer_id" readonly="state != 'draft'" />
+                            <field name="opportunity_id" readonly="state != 'draft'" />
+                            <field name="project_id" readonly="state != 'draft'" />
+                            <field name="unit_id" readonly="state != 'draft'" />
+                            <field name="broker_id" readonly="state != 'draft'" />
+                            <field name="agent_id" readonly="state != 'draft'" />
+                        </group>
+                        <group string="General">
+                            <field name="company_id"
+                                groups="base.group_multi_company"
+                                readonly="state != 'draft'" />
+                            <field name="currency_id"
+                                invisible="1" />
+                            <field name="expiry_date" readonly="state not in ['draft', 'submitted']" />
+                            <field name="payment_status" readonly="1" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Financial">
+                            <group>
+                                <group>
+                                    <field name="eoi_amount"
+                                        widget="monetary"
+                                        readonly="state != 'draft'" />
+                                    <field name="deduction_amount"
+                                        widget="monetary"
+                                        readonly="state not in ['draft', 'submitted', 'cancelled', 'rejected', 'refund_pending']" />
+                                </group>
+                                <group>
+                                    <field name="payment_proof_id"
+                                        required="state == 'submitted'"
+                                        readonly="state not in ['draft', 'submitted']" />
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Refund Policy">
+                            <field name="refund_policy"
+                                nolabel="1"
+                                readonly="state != 'draft'" />
+                        </page>
+                        <page string="Cancellation">
+                            <field name="cancellation_history"
+                                nolabel="1"
+                                readonly="1" />
+                        </page>
+                        <page string="Other">
+                            <group>
+                                <field name="qr_code"
+                                    widget="image"
+                                    class="oe_avatar"
+                                    readonly="state != 'draft'" />
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter />
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Action -->
+    <!-- ========================================================= -->
+
+    <record id="developer_eoi_action" model="ir.actions.act_window">
+        <field name="name">Expression of Interest</field>
+        <field name="res_model">developer.eoi</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="developer_eoi_tree_view"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Expression of Interest
+            </p>
+        </field>
+    </record>
+
+</odoo>

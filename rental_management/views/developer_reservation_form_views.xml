@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- Tree View -->
+    <!-- ========================================================= -->
+
+    <record id="developer_reservation_form_tree_view" model="ir.ui.view">
+        <field name="name">developer.reservation.form.tree</field>
+        <field name="model">developer.reservation.form</field>
+        <field name="arch" type="xml">
+            <list string="Reservation Forms" default_order="reservation_date desc">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="project_id"/>
+                <field name="unit_id"/>
+                <field name="reservation_date"/>
+                <field name="valid_until"/>
+                <field name="final_price" widget="monetary"/>
+                <field name="payment_plan_id"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Form View -->
+    <!-- ========================================================= -->
+
+    <record id="developer_reservation_form_form_view" model="ir.ui.view">
+        <field name="name">developer.reservation.form.form</field>
+        <field name="model">developer.reservation.form</field>
+        <field name="arch" type="xml">
+
+            <form string="Reservation Form">
+
+                <header>
+
+                    <button name="action_generate"
+                            type="object"
+                            string="Generate"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+
+                    <button name="action_finance_approved"
+                            type="object"
+                            string="Finance Approved"
+                            class="btn-secondary"
+                            invisible="state != 'payment_pending'"/>
+
+                    <button name="action_convert_to_spa"
+                            type="object"
+                            string="Convert to SPA"
+                            class="btn-success"
+                            invisible="state != 'ready_for_spa'"/>
+
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="draft,generated,payment_pending,ready_for_spa,converted_to_spa,cancelled"/>
+
+                </header>
+
+                <sheet>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+
+                        <group string="Reservation Information">
+
+                            <field name="customer_id"/>
+
+                            <field name="opportunity_id"/>
+
+                            <field name="project_id"/>
+
+                            <field name="unit_id"/>
+
+                            <field name="reservation_date"/>
+
+                            <field name="valid_until"/>
+
+                            <field name="payment_plan_id"/>
+
+                            <field name="eoi_id"/>
+
+                        </group>
+
+                        <group string="Sales Information">
+
+                            <field name="broker_id"/>
+
+                            <field name="agent_id"/>
+
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+
+                            <field name="currency_id"
+                                   invisible="1"/>
+
+                            <field name="version_number"/>
+
+                            <field name="previous_version_id"/>
+
+                        </group>
+
+                    </group>
+
+                    <notebook>
+
+                        <!-- ================================================= -->
+
+                        <page string="Pricing">
+
+                            <group>
+
+                                <group>
+
+                                    <field name="unit_price"
+                                           widget="monetary"/>
+
+                                    <field name="discount_amount"
+                                           widget="monetary"/>
+
+                                    <field name="final_price"
+                                           widget="monetary"/>
+
+                                </group>
+
+                                <group>
+
+                                    <field name="required_down_payment_percent"/>
+
+                                    <field name="required_down_payment_amount"
+                                           widget="monetary"/>
+
+                                    <field name="dld_fee_percent"/>
+
+                                    <field name="dld_fee_amount"
+                                           widget="monetary"/>
+
+                                </group>
+
+                            </group>
+
+                            <group>
+
+                                <field name="admin_fee"
+                                       widget="monetary"/>
+
+                                <field name="eoi_deduction"
+                                       widget="monetary"/>
+
+                                <field name="net_required_before_spa"
+                                       widget="monetary"/>
+
+                            </group>
+
+                        </page>
+
+                        <!-- ================================================= -->
+
+                        <page string="Signatures">
+
+                            <group>
+
+                                <group>
+
+                                    <field name="customer_signed"
+                                           widget="image"
+                                           class="oe_avatar"/>
+
+                                    <field name="customer_signed_date"/>
+
+                                </group>
+
+                                <group>
+
+                                    <field name="company_signed"
+                                           widget="image"
+                                           class="oe_avatar"/>
+
+                                    <field name="company_signed_date"/>
+
+                                </group>
+
+                            </group>
+
+                        </page>
+
+                        <!-- ================================================= -->
+
+                        <page string="Other">
+
+                            <group>
+
+                                <field name="qr_code"
+                                       widget="image"
+                                       class="oe_avatar"/>
+
+                                <field name="state" readonly="1"/>
+
+                            </group>
+
+                        </page>
+
+                    </notebook>
+
+                </sheet>
+
+                <chatter/>
+
+            </form>
+
+        </field>
+    </record>
+
+    <!-- ========================================================= -->
+    <!-- Action -->
+    <!-- ========================================================= -->
+
+    <record id="developer_reservation_form_action" model="ir.actions.act_window">
+        <field name="name">Reservation Forms</field>
+        <field name="res_model">developer.reservation.form</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="developer_reservation_form_tree_view"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first Reservation Form
+            </p>
+        </field>
+    </record>
+
+</odoo>
