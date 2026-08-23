@@ -5,9 +5,10 @@
         <field name="model">property.sale.offer</field>
         <field name="arch" type="xml">
             <list string="Sale Offers" default_order="offer_date desc, id desc">
-                <field name="name"/><field name="offer_date"/><field name="valid_until"/>
+                <field name="name"/><field name="offer_date"/>
                 <field name="offer_price" widget="monetary"/><field name="payment_total" widget="monetary"/>
-                <field name="state" widget="badge"/>
+                <field name="state" widget="badge" decoration-success="state == 'published'"
+                       decoration-muted="state == 'archived'"/>
             </list>
         </field>
     </record>
@@ -32,7 +33,6 @@
                     <group>
                         <group>
                             <field name="offer_date" readonly="state != 'draft'"/>
-                            <field name="valid_until" readonly="state != 'draft'"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
                         <group>
@@ -54,9 +54,17 @@
                         </page>
                         <page string="Units">
                             <field name="unit_offer_ids" readonly="state != 'draft'">
-                                <list editable="bottom">
+                                <list editable="bottom" decoration-danger="state == 'expired'"
+                                      decoration-muted="state == 'cancelled'">
                                     <field name="property_id"/><field name="customer_id" readonly="1"/>
-                                    <field name="state" readonly="1"/><field name="contract_id" readonly="1"/>
+                                    <field name="valid_until"
+                                           decoration-danger="valid_until and valid_until &lt; current_date and state in ('available', 'customer_selected')"/>
+                                    <field name="state" readonly="1" widget="badge"
+                                           decoration-success="state == 'contracted'"
+                                           decoration-info="state == 'customer_selected'"
+                                           decoration-danger="state == 'expired'"
+                                           decoration-muted="state == 'cancelled'"/>
+                                    <field name="contract_id" readonly="1"/>
                                 </list>
                             </field>
                         </page>
@@ -72,9 +80,17 @@
         <field name="name">property.sale.offer.unit.list</field>
         <field name="model">property.sale.offer.unit</field>
         <field name="arch" type="xml">
-            <list string="Unit Sale Offers">
+            <list string="Unit Sale Offers" decoration-danger="state == 'expired'"
+                  decoration-muted="state == 'cancelled'">
                 <field name="property_id"/><field name="offer_id"/><field name="customer_id"/>
-                <field name="state" widget="badge"/><field name="contract_id"/>
+                <field name="valid_until"
+                       decoration-danger="valid_until and valid_until &lt; current_date and state in ('available', 'customer_selected')"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'contracted'"
+                       decoration-info="state == 'customer_selected'"
+                       decoration-danger="state == 'expired'"
+                       decoration-muted="state == 'cancelled'"/>
+                <field name="contract_id"/>
                 <button name="action_customer_select" type="object" string="Customer Select"
                         invisible="state != 'available'"/>
                 <button name="action_seller_confirm" type="object" string="Seller Confirm"
@@ -93,12 +109,19 @@
                             class="btn-primary" invisible="state != 'available'"/>
                     <button name="action_seller_confirm" type="object" string="Seller Confirm &amp; Create Contract"
                             class="btn-success" invisible="state != 'customer_selected'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="available,customer_selected,contracted,cancelled"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="available,customer_selected,contracted,expired,cancelled"/>
                 </header>
                 <sheet>
-                    <group><group><field name="property_id" readonly="1"/><field name="customer_id" readonly="1"/></group>
-                        <group><field name="offer_id" readonly="1"/><field name="contract_id" readonly="1"/></group></group>
+                    <widget name="web_ribbon" title="Expired" bg_color="text-bg-danger" invisible="state != 'expired'"/>
+                    <group>
+                        <group><field name="property_id" readonly="1"/><field name="customer_id" readonly="1"/></group>
+                        <group><field name="offer_id" readonly="1"/><field name="contract_id" readonly="1"/>
+                            <field name="valid_until" readonly="state not in ('available', 'customer_selected')"/>
+                        </group>
+                    </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
@@ -110,5 +133,30 @@
     <record id="property_sale_offer_action" model="ir.actions.act_window">
         <field name="name">Sale Offers</field><field name="res_model">property.sale.offer</field>
         <field name="view_mode">list,form</field><field name="search_view_id" ref="property_sale_offer_search_view"/>
+    </record>
+
+    <record id="property_sale_offer_unit_search_view" model="ir.ui.view">
+        <field name="name">property.sale.offer.unit.search</field>
+        <field name="model">property.sale.offer.unit</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="property_id"/>
+                <field name="offer_id"/>
+                <field name="customer_id"/>
+                <filter string="Available" name="available" domain="[('state', '=', 'available')]"/>
+                <filter string="Selected by Customer" name="customer_selected" domain="[('state', '=', 'customer_selected')]"/>
+                <filter string="Contracted" name="contracted" domain="[('state', '=', 'contracted')]"/>
+                <filter string="Expired" name="expired" domain="[('state', '=', 'expired')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="Expiring Soon" name="expiring_soon"
+                        domain="[('state', 'in', ('available', 'customer_selected')), ('valid_until', '!=', False), ('valid_until', '&gt;=', context_today().strftime('%Y-%m-%d')), ('valid_until', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Unit" name="group_property" context="{'group_by': 'property_id'}"/>
+                    <filter string="Offer" name="group_offer" context="{'group_by': 'offer_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
     </record>
 </odoo>

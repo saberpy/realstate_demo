@@ -17,7 +17,6 @@ class SaleOffer(models.Model):
                                  default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id')
     offer_date = fields.Date(default=fields.Date.today, required=True)
-    valid_until = fields.Date(string='Valid Until')
     offer_price = fields.Monetary(string='Offer Price', required=True, tracking=True)
     payment_line_ids = fields.One2many('property.sale.offer.line', 'offer_id',
                                        string='Payment Methods', copy=True)
@@ -44,13 +43,11 @@ class SaleOffer(models.Model):
         for offer in self:
             offer.payment_total = sum(offer.payment_line_ids.mapped('amount'))
 
-    @api.constrains('offer_price', 'valid_until')
+    @api.constrains('offer_price')
     def _check_offer(self):
         for offer in self:
             if offer.offer_price <= 0:
                 raise ValidationError(self.env._('Offer price must be greater than zero.'))
-            if offer.valid_until and offer.valid_until < offer.offer_date:
-                raise ValidationError(self.env._('Valid Until cannot be before the offer date.'))
 
     def _check_ready_for_use(self):
         self.ensure_one()
@@ -59,8 +56,6 @@ class SaleOffer(models.Model):
         if self.currency_id.compare_amounts(self.payment_total, self.offer_price) != 0:
             raise ValidationError(self.env._(
                 'The total of payment methods must equal the offer price.'))
-        if self.valid_until and self.valid_until < fields.Date.today():
-            raise ValidationError(self.env._('This offer has expired.'))
 
     def action_publish(self):
         for offer in self:
@@ -78,6 +73,7 @@ class SaleOfferUnit(models.Model):
 
     _name = 'property.sale.offer.unit'
     _description = 'Sale Offer Unit'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'property_id, offer_id'
     _sql_constraints = [
         ('offer_unit_unique', 'unique(offer_id, property_id)',
@@ -91,12 +87,16 @@ class SaleOfferUnit(models.Model):
                                   readonly=True)
     contract_id = fields.Many2one('property.vendor', string='Sale Contract', readonly=True,
                                   copy=False, ondelete='restrict')
+    valid_until = fields.Date(string='Valid Until',
+                              help='Date on which this offer expires for this specific unit. '
+                                   'Leave empty if it never expires.')
     state = fields.Selection([
         ('available', 'Available'),
         ('customer_selected', 'Selected by Customer'),
         ('contracted', 'Contracted'),
+        ('expired', 'Expired'),
         ('cancelled', 'Cancelled'),
-    ], default='available', required=True, copy=False)
+    ], default='available', required=True, copy=False, tracking=True)
 
     @api.constrains('property_id')
     def _check_unit(self):
@@ -112,6 +112,8 @@ class SaleOfferUnit(models.Model):
             raise ValidationError(self.env._('Only published offers can be selected.'))
         if self.property_id.stage in ('sold', 'cancelled'):
             raise ValidationError(self.env._('This unit is already sold or cancelled.'))
+        if self.valid_until and self.valid_until < fields.Date.today():
+            raise ValidationError(self.env._('This offer has expired for this unit.'))
 
     def action_customer_select(self):
         for line in self:
@@ -168,6 +170,23 @@ class SaleOfferUnit(models.Model):
             'res_model': 'property.vendor', 'res_id': contract.id,
             'view_mode': 'form', 'target': 'current',
         }
+
+    # ==========================================
+    # AUTOMATION / CRON ACTIONS
+    # ==========================================
+    @api.model
+    def cron_check_expired_offers(self):
+        today = fields.Date.today()
+        expired_units = self.search([
+            ('state', 'in', ['available', 'customer_selected']),
+            ('valid_until', '!=', False),
+            ('valid_until', '<', today),
+        ])
+        for unit in expired_units:
+            unit.state = 'expired'
+            unit.message_post(body=self.env._(
+                'This offer automatically expired for unit %s on %s.',
+                unit.property_id.display_name, unit.valid_until))
 
 
 class SaleOfferLine(models.Model):
