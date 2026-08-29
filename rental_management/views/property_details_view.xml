@@ -722,7 +722,13 @@
                                         <field name="offer_template_id" domain="[('state', '=', 'published')]"/>
                                         <field name="property_id" column_invisible="1"/>
                                         <field name="total_installments"/>
-                                        <button name="action_get_offer_report" type="object" string="Print"></button>
+                                        <field name="start_date"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="schedule_total" widget="monetary"/>
+                                        <button name="action_generate_schedule" type="object" string="Regenerate"
+                                                icon="fa-refresh"/>
+                                        <button name="action_get_offer_report" type="object" string="Print"
+                                                icon="fa-print"/>
                                     </list>
                                 </field>
                             </page>

@@ -17,10 +17,11 @@ class PropertySaleOfferTemplate(models.Model):
     state = fields.Selection([('draft', 'Draft'), ('published', 'Published'), ('archived', 'Archived'),], default='draft', required=True, tracking=True, copy=False)
 
 
-    @api.depends('line_ids.percentage')
+    @api.depends('line_ids.percentage', 'line_ids.amount_type')
     def _compute_payment_total_percent(self):
         for offer in self:
-            offer.payment_total_percent = sum(offer.line_ids.mapped('percentage'))
+            offer.payment_total_percent = sum(
+                offer.line_ids.filtered(lambda line: line.amount_type == 'percentage').mapped('percentage'))
 
     @api.constrains('payment_total_percent')
     def _check_payment_total_percent(self):

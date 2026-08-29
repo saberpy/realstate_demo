@@ -6,6 +6,7 @@ from . import property_sale_offer_template
 from . import property_sale_offer_template_line
 from . import property_details
 from . import property_details_offers
+from . import property_details_offers_line
 from . import developer_eoi
 from . import developer_workflow
 from . import res_partner
