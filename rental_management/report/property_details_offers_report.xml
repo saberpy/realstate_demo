@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="property_details_offers_qweb_report_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <style>
+                            h1 {
+                            font-size: 20px;
+                            text-transform: uppercase;
+                            margin-bottom: 4px;
+                            color:#5b4636;
+                            }
+                            .subtitle { color:#777; margin-bottom:15px; }
+                            h2 {
+                            font-size: 13px;
+                            background-color: #f0ece6;
+                            padding: 5px 10px;
+                            border-left: 5px solid #5b4636;
+                            margin-top: 15px;
+                            margin-bottom: 8px;
+                            text-transform: uppercase;
+                            color:#5b4636;
+                            }
+                            .data-table { width:100%; border-collapse:collapse; }
+                            .data-table th {
+                            background-color: #5b4636;
+                            color:#fff;
+                            text-align: left;
+                            font-size: 11px;
+                            padding:6px 8px;
+                            }
+                            .data-table td {
+                            font-size: 11px;
+                            padding:5px 8px;
+                            border-bottom:1px solid #ddd;
+                            }
+                            .text-right { text-align:right; }
+                            .status-fully_paid { color:#2e7d32; font-weight:bold; }
+                            .status-overdue { color:#c62828; font-weight:bold; }
+                            .status-partially_paid { color:#ef6c00; font-weight:bold; }
+                            .status-not_due { color:#777; }
+                            tr.total-row td { font-weight:bold; border-top:2px solid #5b4636; }
+                        </style>
+                        <div class="page">
+                            <h1>Statement of Account</h1>
+                            <div class="subtitle">
+                                <span t-field="o.property_id.property_project_id.name"/>
+                                <span> &#183; </span>
+                                <span t-field="o.property_id.name"/>
+                                <span> &#183; </span>
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d-%b-%Y')"/>
+                            </div>
+
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Unit No.</th>
+                                        <th>Unit Type</th>
+                                        <th>Buyer Name</th>
+                                        <th>Contact No</th>
+                                        <th>Project Completion</th>
+                                        <th class="text-right">Unit Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <span t-field="o.property_id.property_project_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="o.property_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="o.property_id.property_subtype_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="o.customer_id.name"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="o.customer_id.phone"/>
+                                            <span t-field="o.customer_id.mobile"
+                                                  t-if="not o.customer_id.phone"/>
+                                        </td>
+                                        <td>
+                                            <span t-field="o.property_id.property_project_id.status"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-field="o.unit_price" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h2 t-if="o.line_ids.filtered(lambda l: l.is_statutory_charge)">Statutory Charges</h2>
+                            <table class="data-table" t-if="o.line_ids.filtered(lambda l: l.is_statutory_charge)">
+                                <thead>
+                                    <tr>
+                                        <th>Statutory Component</th>
+                                        <th>Date</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-right">Receipt</th>
+                                        <th class="text-right">Balance Due</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.line_ids.filtered(lambda l: l.is_statutory_charge)" t-as="line">
+                                        <tr>
+                                            <td>
+                                                <span t-field="line.name"/>
+                                            </td>
+                                            <td>
+                                                <span t-field="line.due_date"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.paid_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.balance" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+
+                            <h2>Payment Plan with Balance</h2>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Payment Type</th>
+                                        <th>%</th>
+                                        <th>Due Date</th>
+                                        <th class="text-right">Amount</th>
+                                        <th class="text-right">Receipt / Adjusted</th>
+                                        <th class="text-right">Balance</th>
+                                        <th class="text-right">Amount Due Now</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.line_ids.filtered(lambda l: not l.is_statutory_charge)" t-as="line">
+                                        <tr>
+                                            <td>
+                                                <span t-field="line.name"/>
+                                            </td>
+                                            <td>
+                                                <span t-esc="'%.2f%%' % line.percentage"/>
+                                            </td>
+                                            <td>
+                                                <span t-field="line.due_date"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.paid_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.balance" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-if="line.status == 'overdue'" t-field="line.balance" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                            <td t-attf-class="status-{{line.status}}">
+                                                <span t-if="line.status == 'fully_paid'">Fully Paid</span>
+                                                <span t-if="line.status == 'partially_paid'">Partially Paid</span>
+                                                <span t-if="line.status == 'overdue'">Overdue</span>
+                                                <span t-if="line.status == 'not_due'">Not Yet Due</span>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <tr class="total-row">
+                                        <td colspan="3">Total</td>
+                                        <td class="text-right">
+                                            <span t-field="o.schedule_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                        </td>
+                                        <td colspan="4"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+
+        <record id="action_report_property_details_offers" model="ir.actions.report">
+            <field name="name">Statement of Account</field>
+            <field name="model">property.details.offers</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">rental_management.property_details_offers_qweb_report_template</field>
+            <field name="report_file">rental_management.property_details_offers_qweb_report_template</field>
+            <field name="binding_model_id" ref="model_property_details_offers"/>
+            <field name="binding_type">report</field>
+            <field name="print_report_name">'Statement of Account - %s' % (object.property_id.name)</field>
+        </record>
+    </data>
+</odoo>

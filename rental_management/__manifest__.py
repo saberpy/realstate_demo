@@ -93,6 +93,7 @@
         'report/property_sold_report.xml',
         'report/invoice_report_inherit.xml',
         'report/tenancy_reminder_details_report_template.xml',
+        'report/property_details_offers_report.xml',
         # Mail Template
         'data/active_contract_mail_template.xml',
         'data/tenancy_reminder_mail_template.xml',
