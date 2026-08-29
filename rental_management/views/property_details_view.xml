@@ -717,24 +717,12 @@
                                 </field>
                             </page>
                             <page string="Sale Offers" name="sale_offers" invisible="sale_lease != 'for_sale'">
-                                <group>
-                                    <field name="customer_id" readonly="stage in ['sold', 'cancelled']"/>
-                                </group>
                                 <field name="sale_offer_ids" context="{'default_property_id': id}">
-                                    <list editable="bottom" decoration-danger="state == 'expired'"
-                                          decoration-muted="state == 'cancelled'">
-                                        <field name="offer_id" domain="[('state', '=', 'published')]"/>
-                                        <field name="customer_id" readonly="1"/>
-                                        <field name="valid_until"
-                                               decoration-danger="valid_until and valid_until &lt; current_date and state in ('available', 'customer_selected')"/>
-                                        <field name="state" readonly="1" widget="badge"
-                                               decoration-success="state == 'contracted'"
-                                               decoration-info="state == 'customer_selected'"
-                                               decoration-danger="state == 'expired'"
-                                               decoration-muted="state == 'cancelled'"/>
-                                        <field name="contract_id" readonly="1"/>
-                                        <button name="action_customer_select" type="object" string="Customer Select" invisible="state != 'available'"/>
-                                        <button name="action_seller_confirm" type="object" string="Seller Confirm" invisible="state != 'customer_selected'"/>
+                                    <list editable="bottom">
+                                        <field name="offer_template_id" domain="[('state', '=', 'published')]"/>
+                                        <field name="property_id" column_invisible="1"/>
+                                        <field name="total_installments"/>
+                                        <button name="action_get_offer_report" type="object" string="Print"></button>
                                     </list>
                                 </field>
                             </page>

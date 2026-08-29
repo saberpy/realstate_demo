@@ -2,7 +2,10 @@
 # Copyright 2020-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
 from . import account_move
+from . import property_sale_offer_template
+from . import property_sale_offer_template_line
 from . import property_details
+from . import property_details_offers
 from . import developer_eoi
 from . import developer_workflow
 from . import res_partner
@@ -10,7 +13,7 @@ from . import rent_contract
 from . import rent_invoice
 from . import maintenance
 from . import sale_contract
-from . import sale_offer
+# from . import sale_offer
 from . import res_config
 from . import crm_lead
 from . import property_region

@@ -48,7 +48,8 @@
         'wizard/unit_creation_view.xml',
         'wizard/agreement_preview_view.xml',
         'wizard/property_maintenance_wizard_view.xml',
-        'wizard/sale_offer_payment_generator_view.xml',
+        # 'wizard/sale_offer_payment_generator_view.xml', 
+        # TODO: Correct wizard for new features!
         # Views
         'views/assets.xml',
         'views/developer_reservation_form_views.xml',

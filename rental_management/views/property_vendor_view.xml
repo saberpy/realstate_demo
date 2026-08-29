@@ -250,7 +250,7 @@
                         </group>
                         <group string="Payment Details">
                             <group>
-                                <field name="sale_offer_id" readonly="1" invisible="not sale_offer_id"/>
+                                <field name="sale_offer_template_id" readonly="1" invisible="not sale_offer_template_id"/>
                                 <field name="payment_term" readonly="1" force_save="1" />
                                 <field name="ask_price" required="1"
                                     readonly="stage != 'booked'"

@@ -90,7 +90,7 @@ class PropertyVendor(models.Model):
                                      ('quarterly', 'Quarterly'),
                                      ('offer_plan', 'Offer Payment Plan')],
                                     string='Payment Term')
-    sale_offer_id = fields.Many2one('property.sale.offer', string='Sale Offer',
+    sale_offer_template_id = fields.Many2one('property.sale.offer.template', string='Sale Offer',
                                     readonly=True, copy=False, ondelete='restrict')
     sale_invoice_ids = fields.One2many(
         'sale.invoice', 'property_sold_id', string="Invoices")
@@ -557,9 +557,9 @@ class SaleInvoice(models.Model):
     property_sold_id = fields.Many2one('property.vendor',
                                        string="Property Sold",
                                        ondelete='cascade')
-    sale_offer_line_id = fields.Many2one('property.sale.offer.line',
-                                         string='Offer Payment Method', readonly=True,
-                                         copy=False, ondelete='restrict')
+    # sale_offer_line_id = fields.Many2one('property.sale.offer.line',
+    #                                      string='Offer Payment Method', readonly=True,
+    #                                      copy=False, ondelete='restrict')
     invoice_id = fields.Many2one('account.move', string="Invoice")
     invoice_date = fields.Date(string="Date")
     payment_state = fields.Selection(related="invoice_id.payment_state")

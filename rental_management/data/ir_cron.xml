@@ -106,7 +106,7 @@
             <field name="ir_actions_server_id" ref="ir_cron_check_expired_eoi"/>
         </record>
 
-        <record id="sale_offer_unit_expire" model="ir.cron">
+        <!-- <record id="sale_offer_unit_expire" model="ir.cron">
             <field name="name">Rental Management: Expire Sale Offers Per Unit</field>
             <field name="model_id" ref="rental_management.model_property_sale_offer_unit"/>
             <field name="state" eval="'code'"/>
@@ -114,7 +114,7 @@
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
             <field name="active" eval="True"/>
-        </record>
+        </record> -->
 
     </data>
 </odoo>

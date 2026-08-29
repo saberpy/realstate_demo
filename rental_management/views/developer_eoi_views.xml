@@ -39,11 +39,11 @@
                         class="btn-primary"
                         invisible="state != 'draft'" />
 
-                    <button name="action_upload_payment_proof"
+                    <!-- <button name="action_upload_payment_proof"
                         type="object"
                         string="Submit Payment Proof"
                         class="btn-primary"
-                        invisible="state != 'submitted'" />
+                        invisible="state != 'submitted'" /> -->
 
                     <button name="action_finance_approve"
                         type="object"
@@ -135,11 +135,11 @@
                                         widget="monetary"
                                         readonly="state not in ['draft', 'submitted', 'cancelled', 'rejected', 'refund_pending']" />
                                 </group>
-                                <group>
+                                <!-- <group>
                                     <field name="payment_proof_id"
                                         required="state == 'submitted'"
                                         readonly="state not in ['draft', 'submitted']" />
-                                </group>
+                                </group> -->
                             </group>
                         </page>
                         <page string="Refund Policy">

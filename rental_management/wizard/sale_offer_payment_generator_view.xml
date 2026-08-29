@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="sale_offer_payment_generator_form_view" model="ir.ui.view">
+    <!-- <record id="sale_offer_payment_generator_form_view" model="ir.ui.view">
         <field name="name">property.sale.offer.payment.generator.form</field>
         <field name="model">property.sale.offer.payment.generator</field>
         <field name="arch" type="xml">
@@ -41,7 +41,7 @@
                 </footer>
             </form>
         </field>
-    </record>
+    </record> -->
     <record id="sale_offer_payment_generator_action" model="ir.actions.act_window">
         <field name="name">Generate Payment Schedule</field>
         <field name="res_model">property.sale.offer.payment.generator</field>

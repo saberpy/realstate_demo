@@ -250,16 +250,15 @@ class PropertyDetails(models.Model):
                                       string="Booking")
     customer_id = fields.Many2one('res.partner', string='Customer', copy=False,
                                   domain=[('user_type', '=', 'customer')])
-    sale_offer_ids = fields.One2many('property.sale.offer.unit', 'property_id',
-                                     string='Sale Offers')
+    sale_offer_ids = fields.One2many('property.details.offers', 'property_id',string='Sale Offers')
     sale_offer_count = fields.Integer(compute='_compute_sale_offer_count')
     sale_broker_count = fields.Integer(string="Sale Broker Count",
                                        compute="compute_count")
 
     def _compute_sale_offer_count(self):
         for rec in self:
-            rec.sale_offer_count = self.env['property.sale.offer.unit'].search_count(
-                [('property_id', '=', rec.id)])
+            rec.sale_offer_count = self.env['property.details.offers'].search_count([('property_id', '=', rec.id)])
+            # rec.sale_offer_count = 1
 
     #  Enquiry
     tenancy_inquiry_ids = fields.One2many('tenancy.inquiry',
@@ -689,7 +688,7 @@ class PropertyDetails(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': 'Sale Offers',
-            'res_model': 'property.sale.offer.unit',
+            'res_model': 'property.details.offers',
             'domain': [('property_id', '=', self.id)],
             'context': {'default_property_id': self.id},
             'view_mode': 'list,form',

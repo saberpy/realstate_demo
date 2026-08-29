@@ -12,4 +12,4 @@ from . import subproject_creation
 from . import unit_creation
 from . import aggremment_preview
 from . import pm_wizard
-from . import sale_offer_payment_generator
+# from . import sale_offer_payment_generator TODO: Change this for new features
