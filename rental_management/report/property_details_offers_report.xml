@@ -6,44 +6,109 @@
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
                         <style>
+                            body { font-family: 'Helvetica Neue', Arial, sans-serif; }
+
+                            /* ---- Logo pill (mimics the dark rounded brand badge) ---- */
+                            .logo-pill {
+                                background:#1a1a1a;
+                                border-radius: 30px;
+                                padding: 10px 22px;
+                                display:inline-block;
+                                margin-bottom: 18px;
+                            }
+                            .logo-pill img { max-height:32px; display:block; }
+                            .logo-pill .logo-text {
+                                color:#fff;
+                                font-weight:700;
+                                letter-spacing:2px;
+                                font-size:16px;
+                                text-transform:uppercase;
+                            }
+                            .logo-pill .logo-subtext {
+                                color:#cfcfcf;
+                                font-size:8px;
+                                letter-spacing:3px;
+                                text-transform:uppercase;
+                                display:block;
+                                margin-top:1px;
+                            }
+
                             h1 {
-                            font-size: 20px;
-                            text-transform: uppercase;
-                            margin-bottom: 4px;
-                            color:#5b4636;
+                                font-size: 20px;
+                                text-transform: uppercase;
+                                margin-bottom: 4px;
+                                color:#1a1a1a;
+                                font-weight:700;
                             }
-                            .subtitle { color:#777; margin-bottom:15px; }
+                            .subtitle { color:#777; margin-bottom:15px; font-size:11px; }
+
                             h2 {
-                            font-size: 13px;
-                            background-color: #f0ece6;
-                            padding: 5px 10px;
-                            border-left: 5px solid #5b4636;
-                            margin-top: 15px;
-                            margin-bottom: 8px;
-                            text-transform: uppercase;
-                            color:#5b4636;
+                                font-size: 12px;
+                                font-weight:700;
+                                margin-top: 20px;
+                                margin-bottom: 8px;
+                                text-transform: uppercase;
+                                letter-spacing:1px;
+                                color:#1a1a1a;
+                                border-bottom: 2px solid #1a1a1a;
+                                padding-bottom: 4px;
                             }
+
+                            /* ---- Zebra-striped, borderless-column table like the reference ---- */
                             .data-table { width:100%; border-collapse:collapse; }
                             .data-table th {
-                            background-color: #5b4636;
-                            color:#fff;
-                            text-align: left;
-                            font-size: 11px;
-                            padding:6px 8px;
+                                text-align: left;
+                                font-size: 10px;
+                                font-weight:700;
+                                text-transform:uppercase;
+                                letter-spacing:0.5px;
+                                color:#1a1a1a;
+                                padding:8px 10px;
+                                border-bottom: 2px solid #1a1a1a;
                             }
                             .data-table td {
-                            font-size: 11px;
-                            padding:5px 8px;
-                            border-bottom:1px solid #ddd;
+                                font-size: 11px;
+                                padding:8px 10px;
+                                color:#333;
+                                vertical-align: top;
                             }
+                            .data-table tbody tr:nth-child(even) { background-color:#f4f2f8; }
+                            .data-table tbody tr:nth-child(odd)  { background-color:#ffffff; }
+
                             .text-right { text-align:right; }
+
+                            /* ---- Two-line dual currency amount cell ---- */
+                            .amount-main {
+                                display:block;
+                                font-weight:700;
+                                color:#1a1a1a;
+                            }
+                            .amount-sub {
+                                display:block;
+                                font-size:10px;
+                                color:#888;
+                                margin-top:1px;
+                            }
+
                             .status-fully_paid { color:#2e7d32; font-weight:bold; }
                             .status-overdue { color:#c62828; font-weight:bold; }
                             .status-partially_paid { color:#ef6c00; font-weight:bold; }
                             .status-not_due { color:#777; }
-                            tr.total-row td { font-weight:bold; border-top:2px solid #5b4636; }
+
+                            tr.total-row td { font-weight:bold; border-top:2px solid #1a1a1a; background-color:#fff !important; }
                         </style>
                         <div class="page">
+
+                            <!-- Brand badge: uses the company logo if set, otherwise falls back to the company name -->
+                            <div class="logo-pill">
+                                <img t-if="o.property_id.property_project_id.company_id.logo"
+                                     t-att-src="image_data_uri(o.property_id.property_project_id.company_id.logo)"/>
+                                <t t-else="">
+                                    <span class="logo-text" t-esc="o.property_id.property_project_id.company_id.name"/>
+                                    <span class="logo-subtext">Development</span>
+                                </t>
+                            </div>
+
                             <h1>Statement of Account</h1>
                             <div class="subtitle">
                                 <span t-field="o.property_id.property_project_id.name"/>
@@ -81,8 +146,6 @@
                                         </td>
                                         <td>
                                             <span t-field="o.customer_id.phone"/>
-                                            <span t-field="o.customer_id.mobile"
-                                                  t-if="not o.customer_id.phone"/>
                                         </td>
                                         <td>
                                             <span t-field="o.property_id.property_project_id.status"/>
@@ -132,13 +195,12 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Payment Type</th>
-                                        <th>%</th>
-                                        <th>Due Date</th>
+                                        <th>Description</th>
+                                        <th>Percentage</th>
+                                        <th>Date</th>
                                         <th class="text-right">Amount</th>
                                         <th class="text-right">Receipt / Adjusted</th>
                                         <th class="text-right">Balance</th>
-                                        <th class="text-right">Amount Due Now</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -149,22 +211,33 @@
                                                 <span t-field="line.name"/>
                                             </td>
                                             <td>
-                                                <span t-esc="'%.2f%%' % line.percentage"/>
+                                                <span t-out="line.percentage"/>%
                                             </td>
                                             <td>
                                                 <span t-field="line.due_date"/>
                                             </td>
                                             <td class="text-right">
-                                                <span t-field="line.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                                <!-- Line 1: amount in the offer's own currency -->
+                                                <span class="amount-main"
+                                                      t-field="line.amount"
+                                                      t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                                <!-- Line 2: USD equivalent, computed via Odoo's live currency conversion -->
+                                                <span class="amount-sub"
+                                                      t-esc="'$ %s' % '{:,.2f}'.format(
+                                                          line.currency_id._convert(
+                                                              line.amount,
+                                                              env.ref('base.USD'),
+                                                              o.property_id.property_project_id.company_id,
+                                                              line.due_date or datetime.date.today()
+                                                          )
+                                                      )"
+                                                      t-if="line.currency_id != env.ref('base.USD')"/>
                                             </td>
                                             <td class="text-right">
                                                 <span t-field="line.paid_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                             </td>
                                             <td class="text-right">
                                                 <span t-field="line.balance" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                                            </td>
-                                            <td class="text-right">
-                                                <span t-if="line.status == 'overdue'" t-field="line.balance" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                             </td>
                                             <td t-attf-class="status-{{line.status}}">
                                                 <span t-if="line.status == 'fully_paid'">Fully Paid</span>
@@ -179,7 +252,7 @@
                                         <td class="text-right">
                                             <span t-field="o.schedule_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                         </td>
-                                        <td colspan="4"/>
+                                        <td colspan="3"/>
                                     </tr>
                                 </tbody>
                             </table>

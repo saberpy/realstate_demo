@@ -6,7 +6,6 @@ STATUTORY_KEYWORDS = ('dld', 'admin')
 
 class PropertyDetailsOffersLine(models.Model):
     """One generated installment of a unit's payment schedule."""
-
     _name = 'property.details.offers.line'
     _description = 'Property Details Offer Installment'
     _order = 'sequence, due_date, id'

@@ -135,7 +135,7 @@ class PropertyDetailsOffers(models.Model):
             })
             sequence += 10
 
-        remaining_percent = 100.0 - consumed_percent
+        remaining_percent = 1 - consumed_percent
         if leftover_indexes:
             each_percent = remaining_percent / len(leftover_indexes)
             for index in leftover_indexes:

@@ -254,7 +254,7 @@
                                                 <div class="card info-bg p-32">
                                                     <div class="card-body info-bg tk-card-body">
                                                         <img alt="users" width="40" src="/rental_management/static/src/img/cash.svg" />
-                                                        <h4 class="tk-st-1 info-bg"> Total Rent Amount </h4>
+                                                        <h4 class="tk-st-1 info-bg"> Total sale Amount </h4>
                                                         <h6 class="tk-st-2 info-bg">
                                                             <t t-esc="state.propertyStats['rent_total']" />
                                                         </h6>
