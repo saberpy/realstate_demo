@@ -52,6 +52,11 @@ class TenancyDetails(models.Model):
                                           string="Project", store=True)
     subproject_id = fields.Many2one(related="property_id.subproject_id", string="Sub Project",
                                     store=True)
+    sale_offer_id = fields.Many2one('property.details.offers', string='Sale Offer',
+                                    copy=False,
+                                    domain="[('property_id', '=', property_id)]",
+                                    help='Sale offer whose installment lines are invoiced '
+                                         'when this contract is activated.')
     region_id = fields.Many2one(related="property_id.region_id")
     street = fields.Char(related="property_id.street")
     street2 = fields.Char(related="property_id.street2")
@@ -322,7 +327,18 @@ class TenancyDetails(models.Model):
                 raise ValidationError(self.env._(f"For Rent Unit '{rent_unit}', "
                                         f"Payment Term should be one "
                                         f"of {', '.join(valid_payment_terms[rent_unit])}"))
-        return super().write(vals)
+        activating_records = self.env['tenancy.details']
+        if vals.get('contract_type') == 'running_contract':
+            for rec in self:
+                if rec.contract_type == 'new_contract':
+                    if not vals.get('sale_offer_id', rec.sale_offer_id.id):
+                        raise ValidationError(self.env._(
+                            "Please select a Sale Offer before activating this contract."))
+                    activating_records |= rec
+        res = super().write(vals)
+        for rec in activating_records:
+            rec._generate_sale_offer_invoices()
+        return res
 
     # Compute
     # Contract End Date
@@ -746,6 +762,42 @@ class TenancyDetails(models.Model):
             'last_invoice_payment_date': invoice_id.invoice_date,
             "type": "automatic",
         })
+
+    def _generate_sale_offer_invoices(self):
+        """Post one customer invoice per Sale Offer installment line and stage a
+        draft payment for each of them."""
+        self.ensure_one()
+        if not self.sale_offer_id:
+            return
+        payment_journal = self.env['account.journal'].sudo().search([
+            ('type', 'in', ('bank', 'cash')),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+        for line in self.sale_offer_id.line_ids:
+            invoice_id = self.env['account.move'].sudo().create({
+                'partner_id': self.tenancy_id.id,
+                'move_type': 'out_invoice',
+                'invoice_date': line.due_date,
+                'tenancy_id': self.id,
+                'invoice_line_ids': [(0, 0, {
+                    'product_id': self.installment_item_id.id,
+                    'name': line.name,
+                    'quantity': 1,
+                    'price_unit': line.amount,
+                })],
+            })
+            invoice_id.action_post()
+            if payment_journal:
+                self.env['account.payment'].sudo().create({
+                    'payment_type': 'inbound',
+                    'partner_type': 'customer',
+                    'partner_id': self.tenancy_id.id,
+                    'journal_id': payment_journal.id,
+                    'amount': invoice_id.amount_total,
+                    'currency_id': invoice_id.currency_id.id,
+                    'date': line.due_date,
+                    'memo': line.name,
+                })
 
     def action_active_rent_contract(self):
         """Active contract & open wizard bases on rent Unit"""

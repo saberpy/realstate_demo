@@ -216,6 +216,9 @@
                             <group>
                                 <field name="property_id" required="1" readonly="1" force_save="1"
                                     options="{'no_quick_create':True,'no_create_edit':True}" />
+                                <field name="sale_offer_id"
+                                    readonly="contract_type != 'new_contract'"
+                                    options="{'no_quick_create':True,'no_create_edit':True}" />
                                 <label for="property_type" class="mt-1" />
                                 <div name="property_type">
                                     <field name="property_type" class="oe_inline"
