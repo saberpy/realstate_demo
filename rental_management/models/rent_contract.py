@@ -784,6 +784,7 @@ class TenancyDetails(models.Model):
                     'name': line.name,
                     'quantity': 1,
                     'price_unit': line.amount,
+                    'tax_ids': self.tax_ids.ids if self.instalment_tax else False,
                 })],
             })
             invoice_id.action_post()
