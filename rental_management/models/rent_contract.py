@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 # Copyright 2020-Today TechKhedut.
 # Part of TechKhedut. See LICENSE file for full copyright and licensing details.
+import base64
 import datetime
 import re
 from datetime import timedelta
+from io import BytesIO
 
+import xlwt
 from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -623,6 +626,306 @@ class TenancyDetails(models.Model):
             'context': {'create': False},
             'view_mode': 'kanban,list,form',
             'target': 'current'
+        }
+
+    # Statement of Account (Excel)
+    def _get_statement_completion_label(self):
+        """Get a human friendly project completion status for the unit"""
+        self.ensure_one()
+        handed_over_stages = ('handed_over', 'ready_handover')
+        if self.property_id.stage in handed_over_stages:
+            return 'Handed Over'
+        if self.property_id.stage in ('sold', 'completed', 'snagging'):
+            return 'Completed'
+        return 'Under Construction'
+
+    def _get_statement_of_account_receipts(self):
+        """Get customer receipts (payments) reconciled against this contract's invoices"""
+        self.ensure_one()
+        invoices = self.invoice_ids.filtered(
+            lambda move: move.move_type == 'out_invoice' and move.state == 'posted')
+        if not invoices:
+            return self.env['account.payment']
+        try:
+            payments = invoices.sudo()._get_reconciled_payments()
+        except AttributeError:
+            payments = self.env['account.payment']
+        return payments.sorted(key=lambda payment: (payment.date or fields.Date.today(), payment.id))
+
+    def action_print_statement_of_account_xls(self):
+        """Generate the unit 'Statement of Account' report as an Excel (.xls) file"""
+        self.ensure_one()
+        workbook = xlwt.Workbook(encoding='utf-8')
+        sheet = workbook.add_sheet('Statement of Account', cell_overwrite_ok=True)
+        sheet.show_grid = False
+        sheet.col(0).width = 500
+        for col in range(1, 10):
+            sheet.col(col).width = 4200
+
+        xlwt.add_palette_colour('soa_dark', 0x21)
+        workbook.set_colour_RGB(0x21, 59, 51, 44)
+        xlwt.add_palette_colour('soa_gold_bg', 0x22)
+        workbook.set_colour_RGB(0x22, 240, 232, 210)
+        xlwt.add_palette_colour('soa_paid_bg', 0x23)
+        workbook.set_colour_RGB(0x23, 210, 241, 214)
+        xlwt.add_palette_colour('soa_due_bg', 0x24)
+        workbook.set_colour_RGB(0x24, 240, 210, 211)
+
+        border = ('border: top hair, bottom hair, left hair, right hair, '
+                  'top_color gray50, bottom_color gray50, left_color gray50, right_color gray50;')
+        company_box = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_dark;'
+            'font: name Century Gothic, height 220, bold on, color_index white;'
+            'align: vert center, horz center;' + border)
+        report_title = xlwt.easyxf(
+            'font: name Century Gothic, height 380, bold on, color_index soa_dark;'
+            'align: vert center, horz left;')
+        report_subtitle = xlwt.easyxf(
+            'font: name Century Gothic, height 160, italic on, color_index gray80;'
+            'align: vert center, horz left;')
+        info_label = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_dark;'
+            'font: name Century Gothic, height 160, bold on, color_index white;'
+            'align: vert center, horz center;' + border)
+        info_value = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_gold_bg;'
+            'font: name Century Gothic, height 200, bold on, color_index soa_dark;'
+            'align: vert center, horz center;' + border)
+        info_value_date = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_gold_bg;'
+            'font: name Century Gothic, height 200, bold on, color_index soa_dark;'
+            'align: vert center, horz center;' + border, num_format_str='dd-mmm-yyyy')
+        section_title = xlwt.easyxf(
+            'font: name Century Gothic, height 200, bold on, color_index soa_dark;'
+            'align: vert center, horz left;'
+            'border: bottom medium, bottom_color soa_dark;')
+        col_header = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_dark;'
+            'font: name Century Gothic, height 160, bold on, color_index white;'
+            'align: vert center, horz center, wrap on;' + border)
+        cell_center = xlwt.easyxf(
+            'font: name Century Gothic, height 160;'
+            'align: vert center, horz center;' + border)
+        cell_left = xlwt.easyxf(
+            'font: name Century Gothic, height 160;'
+            'align: vert center, horz left;' + border)
+        cell_money = xlwt.easyxf(
+            'font: name Century Gothic, height 160;'
+            'align: vert center, horz right;' + border, num_format_str='#,##0.00')
+        cell_date = xlwt.easyxf(
+            'font: name Century Gothic, height 160;'
+            'align: vert center, horz center;' + border, num_format_str='dd-mmm-yyyy')
+        total_label = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_gold_bg;'
+            'font: name Century Gothic, height 160, bold on;'
+            'align: vert center, horz left;' + border)
+        total_money = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_gold_bg;'
+            'font: name Century Gothic, height 160, bold on;'
+            'align: vert center, horz right;' + border, num_format_str='#,##0.00')
+        paid_money = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_paid_bg;'
+            'font: name Century Gothic, height 160, bold on;'
+            'align: vert center, horz right;' + border, num_format_str='#,##0.00')
+        due_money = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_due_bg;'
+            'font: name Century Gothic, height 160, bold on;'
+            'align: vert center, horz right;' + border, num_format_str='#,##0.00')
+        percent_pct = xlwt.easyxf(
+            'pattern: pattern solid, fore_colour soa_paid_bg;'
+            'font: name Century Gothic, height 380, bold on, color_index soa_dark;'
+            'align: vert center, horz center;' + border)
+        status_style = {
+            'fully_paid': xlwt.easyxf(
+                'font: name Century Gothic, height 160, bold on, color_index sea_green;'
+                'align: vert center, horz center;' + border),
+            'partially_paid': xlwt.easyxf(
+                'font: name Century Gothic, height 160, bold on, color_index gold;'
+                'align: vert center, horz center;' + border),
+            'overdue': xlwt.easyxf(
+                'font: name Century Gothic, height 160, bold on, color_index dark_red;'
+                'align: vert center, horz center;' + border),
+            'not_due': xlwt.easyxf(
+                'font: name Century Gothic, height 160, bold on, color_index dark_blue;'
+                'align: vert center, horz center;' + border),
+        }
+        status_label = {
+            'fully_paid': 'Fully Paid',
+            'partially_paid': 'Partially Paid',
+            'overdue': 'Overdue',
+            'not_due': 'Not Yet Due',
+        }
+
+        row = 1
+        sheet.row(row).height = 700
+        sheet.write_merge(row, row + 3, 1, 3, self.company_id.name or '', company_box)
+        sheet.write_merge(row, row, 4, 8, 'STATEMENT OF ACCOUNT', report_title)
+        sheet.row(row + 1).height = 350
+        sheet.write_merge(
+            row + 1, row + 1, 4, 8,
+            f'{self.property_project_id.name or ""} · {self.company_id.name or ""}',
+            report_subtitle)
+        sheet.write(row + 2, 4, 'Select Unit', info_label)
+        sheet.write_merge(row + 2, row + 2, 5, 6, self.property_id.name or '', info_value)
+        sheet.write(row + 2, 7, 'Date', info_label)
+        sheet.write(row + 2, 8, fields.Date.context_today(self), info_value_date)
+        row += 5
+
+        # Unit / Buyer Information
+        sheet.row(row).height = 380
+        sheet.write(row, 1, 'Project', col_header)
+        sheet.write(row, 2, 'Unit No.', col_header)
+        sheet.write(row, 3, 'Unit Type', col_header)
+        sheet.write(row, 4, 'View', col_header)
+        sheet.write(row, 5, 'Buyer Name', col_header)
+        sheet.write(row, 6, 'Contact No', col_header)
+        sheet.write(row, 7, 'Project Completion', col_header)
+        sheet.write(row, 8, 'Unit Price', col_header)
+        row += 1
+        sheet.row(row).height = 320
+        sheet.write(row, 1, self.property_project_id.name or '', cell_center)
+        sheet.write(row, 2, self.property_id.name or '', cell_center)
+        sheet.write(row, 3, self.property_subtype_id.name or '', cell_center)
+        sheet.write(row, 4, self.property_id.facing and dict(
+            self.property_id._fields['facing'].selection).get(self.property_id.facing) or '',
+            cell_center)
+        sheet.write(row, 5, self.tenancy_id.name or '', cell_center)
+        sheet.write(row, 6, self.customer_phone or '', cell_center)
+        sheet.write(row, 7, self._get_statement_completion_label(), cell_center)
+        sheet.write(row, 8, self.property_id.price, cell_money)
+        row += 2
+
+        offer_lines = self.sale_offer_id.line_ids if self.sale_offer_id else self.env[
+            'property.details.offers.line']
+        statutory_lines = offer_lines.filtered('is_statutory_charge')
+
+        # Statutory Charges
+        sheet.row(row).height = 320
+        sheet.write_merge(row, row, 1, 6, 'Statutory Charges', section_title)
+        row += 1
+        sheet.row(row).height = 320
+        for col, label in enumerate(
+                ['Statutory Component', '%', 'Date', 'Amount', 'Receipt', 'Balance Due'], start=1):
+            sheet.write(row, col, label, col_header)
+        row += 1
+        statutory_amount = statutory_receipt = statutory_balance = 0.0
+        for line in statutory_lines:
+            sheet.row(row).height = 300
+            sheet.write(row, 1, line.name, cell_left)
+            sheet.write(row, 2, f'{line.percentage:.2f}%' if line.percentage else '-', cell_center)
+            sheet.write(row, 3, line.due_date, cell_date)
+            sheet.write(row, 4, line.amount, cell_money)
+            sheet.write(row, 5, line.paid_amount, cell_money)
+            sheet.write(row, 6, line.balance, cell_money)
+            statutory_amount += line.amount
+            statutory_receipt += line.paid_amount
+            statutory_balance += line.balance
+            row += 1
+        sheet.row(row).height = 300
+        sheet.write(row, 3, 'Total', total_label)
+        sheet.write(row, 4, statutory_amount, total_money)
+        sheet.write(row, 5, statutory_receipt, paid_money)
+        sheet.write(row, 6, statutory_balance, due_money)
+        row += 2
+
+        # Payment Plan with Balance
+        sheet.row(row).height = 320
+        sheet.write_merge(row, row, 1, 8, 'Payment Plan with Balance', section_title)
+        row += 1
+        sheet.row(row).height = 320
+        for col, label in enumerate(
+                ['Payment Type', '%', 'Due Date', 'Amount', 'Receipt / Adjusted', 'Balance',
+                 'Amount Due Now', 'Status'], start=1):
+            sheet.write(row, col, label, col_header)
+        row += 1
+        plan_amount = plan_receipt = plan_balance = plan_due_now = 0.0
+        for line in offer_lines:
+            due_now = line.balance if line.status in ('overdue', 'partially_paid') else 0.0
+            sheet.row(row).height = 300
+            sheet.write(row, 1, line.name, cell_left)
+            sheet.write(row, 2, f'{line.percentage:.2f}%' if line.percentage else '-', cell_center)
+            sheet.write(row, 3, line.due_date, cell_date)
+            sheet.write(row, 4, line.amount, cell_money)
+            sheet.write(row, 5, line.paid_amount, cell_money)
+            sheet.write(row, 6, line.balance, cell_money)
+            sheet.write(row, 7, due_now if due_now else '', cell_money)
+            sheet.write(row, 8, status_label.get(line.status, ''),
+                       status_style.get(line.status, cell_center))
+            plan_amount += line.amount
+            plan_receipt += line.paid_amount
+            plan_balance += line.balance
+            plan_due_now += due_now
+            row += 1
+        sheet.row(row).height = 300
+        sheet.write(row, 3, 'Total', total_label)
+        sheet.write(row, 4, plan_amount, total_money)
+        sheet.write(row, 5, plan_receipt, paid_money)
+        sheet.write(row, 6, plan_balance, due_money)
+        sheet.write(row, 7, plan_due_now, due_money)
+        sheet.write(row, 8, '', total_label)
+        row += 2
+
+        # Total Amount Received + Percentage
+        sheet.row(row).height = 320
+        sheet.write_merge(row, row, 1, 8, 'Total Amount Received + Percentage', section_title)
+        row += 1
+        sheet.row(row).height = 320
+        sheet.write_merge(row, row, 1, 3, 'Selling Price + DLD + Admin', col_header)
+        sheet.write_merge(row, row, 4, 6, 'Total Received', col_header)
+        sheet.write_merge(row, row, 7, 8, 'Collection %', col_header)
+        row += 1
+        sheet.row(row).height = 340
+        collection_percent = (plan_receipt / plan_amount * 100.0) if plan_amount else 0.0
+        sheet.write_merge(row, row, 1, 3, plan_amount, total_money)
+        sheet.write_merge(row, row, 4, 6, plan_receipt, paid_money)
+        sheet.write_merge(row, row, 7, 8, f'{collection_percent:.1f}%', percent_pct)
+        row += 2
+
+        # Receipt List
+        receipts = self._get_statement_of_account_receipts()
+        sheet.row(row).height = 320
+        sheet.write_merge(row, row, 1, 7, f'Receipt List — {self.property_id.name or "Selected Unit"}',
+                          section_title)
+        row += 1
+        sheet.row(row).height = 320
+        for col, label in enumerate(
+                ['Receipt Date', 'Receipt No.', 'Customer Name', 'Description / Memo',
+                 'Payment Mode / Type', 'Amount Received', 'Category / Split'], start=1):
+            sheet.write(row, col, label, col_header)
+        row += 1
+        receipt_total = 0.0
+        for payment in receipts:
+            sheet.row(row).height = 300
+            sheet.write(row, 1, payment.date, cell_date)
+            sheet.write(row, 2, payment.name or '', cell_center)
+            sheet.write(row, 3, payment.partner_id.name or '', cell_left)
+            sheet.write(row, 4, payment.memo or '', cell_left)
+            method_line = getattr(payment, 'payment_method_line_id', False)
+            payment_mode = (method_line.name if method_line else False) or payment.journal_id.name or ''
+            sheet.write(row, 5, payment_mode, cell_center)
+            sheet.write(row, 6, payment.amount, cell_money)
+            category = (self.property_project_id.name or self.company_id.name or '') + ' Receipts'
+            sheet.write(row, 7, category, cell_center)
+            receipt_total += payment.amount
+            row += 1
+        sheet.row(row).height = 300
+        sheet.write(row, 5, 'Total', total_label)
+        sheet.write(row, 6, receipt_total, total_money)
+
+        stream = BytesIO()
+        workbook.save(stream)
+        out = base64.encodebytes(stream.getvalue())
+
+        attachment = self.env['ir.attachment'].sudo().create({
+            'name': f'Statement of Account - {self.property_id.name or self.tenancy_seq}.xls',
+            'type': 'binary',
+            'public': False,
+            'datas': out,
+        })
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/web/content/{attachment.id}?download=true',
+            'target': 'self',
         }
 
     #  Close Contract
